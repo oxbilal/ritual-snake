@@ -1,0 +1,23 @@
+# Generated example contracts
+examples/contracts/
+
+# Secrets / credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+
+# Dependencies / build output
+node_modules/
+.firebase/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
