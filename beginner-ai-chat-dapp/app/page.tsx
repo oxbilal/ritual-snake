@@ -596,7 +596,7 @@ export default function App() {
         <header className="relative flex flex-col gap-4 border-b border-white/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 font-bold">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-black p-1.5 shadow-[0_0_24px_rgba(16,185,129,.45)] sm:h-12 sm:w-12">
-              <img src="/ritual-logo.png" alt="Ritual" className="h-full w-full object-contain" />
+              <img src="/ritual-logo.png" alt="Ritual logo" className="h-full w-full object-contain" />
             </span>
             Ritual Snake
           </div>
