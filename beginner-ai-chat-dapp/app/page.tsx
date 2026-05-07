@@ -122,6 +122,21 @@ function readStoredCount(key: string) {
   return value ? Number.parseInt(value, 10) || 0 : 0;
 }
 
+function shareScoreOnX(score: number, rank: string, wallet?: string) {
+  const origin = window.location.origin;
+  const gameUrl = origin;
+  const cardUrl = new URL("/api/og", origin);
+  cardUrl.searchParams.set("score", String(score));
+  cardUrl.searchParams.set("rank", rank);
+  cardUrl.searchParams.set("wallet", wallet || "");
+
+  const text = `I scored ${score} on Ritual Snake (${rank}). Play here: ${gameUrl}`;
+  const shareUrl = new URL("https://twitter.com/intent/tweet");
+  shareUrl.searchParams.set("text", text);
+  shareUrl.searchParams.set("url", cardUrl.toString());
+  window.open(shareUrl.toString(), "_blank");
+}
+
 function normalizePlayer(data: unknown): PlayerStats {
   if (!data) return { totalPoints: 0n, bestScore: 0n, totalGames: 0n, rank: "Beginner" };
   if (Array.isArray(data)) {
@@ -850,12 +865,7 @@ export default function App() {
                     Play Game
                   </Button>
                   <Button
-                    onClick={() =>
-                      window.open(
-                        `https://twitter.com/intent/tweet?text=${encodeURIComponent(`I scored ${lastScore} on Ritual Snake`)}`,
-                        "_blank",
-                      )
-                    }
+                    onClick={() => shareScoreOnX(lastScore, getRank(lastScore), address)}
                     className="rounded-xl border border-white/20 bg-transparent px-4 py-2 hover:bg-white hover:text-black"
                   >
                     Share on X

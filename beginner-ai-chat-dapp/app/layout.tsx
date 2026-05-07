@@ -2,9 +2,23 @@ import type { Metadata } from "next";
 import { Providers } from "../components/Providers";
 import "./globals.css";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Ritual Snake",
   description: "A gas-only Snake game for Ritual Testnet.",
+  openGraph: {
+    title: "Ritual Snake",
+    description: "A gas-only Snake game for Ritual Testnet.",
+    images: ["/api/og"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Ritual Snake",
+    description: "A gas-only Snake game for Ritual Testnet.",
+    images: ["/api/og"],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
