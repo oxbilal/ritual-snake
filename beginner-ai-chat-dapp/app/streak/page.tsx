@@ -12,8 +12,8 @@ import {
   useWaitForTransactionReceipt,
   useWalletClient,
 } from "wagmi";
-import { ritualChain } from "@/lib/chain";
-import { errorMessage, shortenHex } from "@/lib/format";
+import { ritualChain } from "../../lib/chain";
+import { errorMessage, shortenHex } from "../../lib/format";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const STORAGE_PREFIX = "ritual-streak-hub";
