@@ -598,7 +598,23 @@ export default function App() {
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-black p-1.5 shadow-[0_0_24px_rgba(16,185,129,.45)] sm:h-12 sm:w-12">
               <img src="/ritual-logo.png" alt="Ritual logo" className="h-full w-full object-contain" />
             </span>
-            Ritual Snake
+            <span>Ritual Snake</span>
+            <a
+              href="https://faucet.ritualfoundation.org/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-emerald-500/30 px-2.5 py-1 text-xs font-bold text-emerald-400 transition hover:border-emerald-400 hover:bg-emerald-500/10"
+            >
+              Ritual Faucet
+            </a>
+            <a
+              href="https://discord.com/invite/ritual-net"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-emerald-500/30 px-2.5 py-1 text-xs font-bold text-emerald-400 transition hover:border-emerald-400 hover:bg-emerald-500/10"
+            >
+              Ritual Discord
+            </a>
           </div>
 
           <div className="sm:absolute sm:left-1/2 sm:flex sm:-translate-x-1/2 sm:items-center sm:gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1 text-sm font-bold text-emerald-400">
@@ -806,29 +822,6 @@ export default function App() {
             </div>
           </section>
 
-          <section className="mt-6 rounded-xl border border-white/10 bg-[#101010] p-4">
-            <h2 className="mb-3 text-xs font-black text-zinc-500">RITUAL RESOURCES</h2>
-            <div className="grid gap-3 text-sm sm:grid-cols-2">
-              <a
-                href="https://faucet.ritualfoundation.org/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 transition hover:border-emerald-400/50 hover:bg-emerald-500/10"
-              >
-                <span className="font-bold text-emerald-400">Ritual Faucet</span>
-                <p className="mt-1 text-zinc-500">Need test RITUAL for gas? Use the faucet.</p>
-              </a>
-              <a
-                href="https://discord.com/invite/ritual-net"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 transition hover:border-emerald-400/50 hover:bg-emerald-500/10"
-              >
-                <span className="font-bold text-emerald-400">Ritual Discord</span>
-                <p className="mt-1 text-zinc-500">Join Ritual Discord for updates and access codes.</p>
-              </a>
-            </div>
-          </section>
         </main>
 
         <footer className="flex items-center justify-between border-t border-white/10 px-6 py-4 text-xs text-zinc-600">
