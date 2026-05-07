@@ -314,7 +314,7 @@ export default function App() {
       {
         onSuccess: () => {
           setWalletMenuOpen(false);
-          setStatus("Wallet connected. Confirm startRun() to play.");
+          setStatus("Confirm in MetaMask to start playing.");
         },
         onError: (error) => setStatus(`Wallet connection failed: ${errorMessage(error)}`),
       },
@@ -376,7 +376,7 @@ export default function App() {
     if (!ensureReady()) return;
 
     setPending("startRun()");
-    setStatus("Waiting for wallet confirmation: startRun()");
+    setStatus("Confirm in MetaMask to start playing.");
 
     try {
       debugContractCall("startRun", []);
@@ -719,7 +719,7 @@ export default function App() {
                   disabled={!contractReady || playing || countdown !== null || pending !== null || isWalletPending || isConnecting}
                   className="mt-3 w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 hover:bg-white hover:text-black disabled:opacity-50"
                 >
-                  {pending === "startRun()" ? "Confirming..." : playing ? "Playing..." : countdown !== null ? "Starting..." : "Start Game TX"}
+                  {pending === "startRun()" ? "Confirming..." : playing ? "Playing..." : countdown !== null ? "Starting..." : "Play Game"}
                 </Button>
 
                 <p className="mt-3 min-h-10 text-center text-sm leading-5 text-zinc-500">{status}</p>
@@ -728,24 +728,6 @@ export default function App() {
                     Score contract not deployed yet.
                   </p>
                 )}
-                <div className="mt-3 space-y-1 text-xs text-zinc-500">
-                  <p className="flex justify-between gap-3">
-                    <span>Total sessions</span>
-                    <b className="text-emerald-400">{totalSessions}</b>
-                  </p>
-                  <p className="flex justify-between gap-3">
-                    <span>Total onchain transactions</span>
-                    <b className="text-emerald-400">{totalOnchainTransactions}</b>
-                  </p>
-                  <p className="break-all font-mono">
-                    <span className="text-zinc-600">Last start tx: </span>
-                    {lastStartTx ?? "--"}
-                  </p>
-                  <p className="break-all font-mono">
-                    <span className="text-zinc-600">Last score submit tx: </span>
-                    {lastSubmitTx ?? "--"}
-                  </p>
-                </div>
                 {pending === "submitScore(score)" && <p className="mt-1 text-center text-xs font-bold text-emerald-300">Submitting final score...</p>}
                 {submitError && (
                   <div className="mt-3 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-center text-sm text-red-200">
@@ -865,7 +847,7 @@ export default function App() {
                 {lastSubmitTx && <p className="mb-3 break-all font-mono text-xs text-emerald-300">Tx: {lastSubmitTx}</p>}
                 <div className="grid grid-cols-2 gap-3">
                   <Button onClick={startRun} className="rounded-xl bg-white px-4 py-2 text-black hover:bg-zinc-200">
-                    Start Game TX
+                    Play Game
                   </Button>
                   <Button
                     onClick={() =>
