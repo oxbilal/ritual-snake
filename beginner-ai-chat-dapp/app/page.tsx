@@ -124,17 +124,15 @@ function readStoredCount(key: string) {
 
 function shareScoreOnX(score: number, rank: string, wallet?: string) {
   const origin = window.location.origin;
-  const gameUrl = origin;
-  const cardUrl = new URL("/api/og", origin);
-  cardUrl.searchParams.set("score", String(score));
-  cardUrl.searchParams.set("rank", rank);
-  cardUrl.searchParams.set("wallet", wallet || "");
+  const shareUrl = new URL("/share", origin);
+  shareUrl.searchParams.set("score", String(score));
+  shareUrl.searchParams.set("rank", rank);
+  shareUrl.searchParams.set("wallet", wallet || "");
 
-  const text = `I scored ${score} on Ritual Snake (${rank}). Play here: ${gameUrl}`;
-  const shareUrl = new URL("https://twitter.com/intent/tweet");
-  shareUrl.searchParams.set("text", text);
-  shareUrl.searchParams.set("url", cardUrl.toString());
-  window.open(shareUrl.toString(), "_blank");
+  const text = `I scored ${score} on Ritual Snake (${rank}). Play here:\n${shareUrl.toString()}`;
+  const tweetUrl = new URL("https://twitter.com/intent/tweet");
+  tweetUrl.searchParams.set("text", text);
+  window.open(tweetUrl.toString(), "_blank");
 }
 
 function normalizePlayer(data: unknown): PlayerStats {
