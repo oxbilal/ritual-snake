@@ -805,6 +805,30 @@ export default function App() {
               )}
             </div>
           </section>
+
+          <section className="mt-6 rounded-xl border border-white/10 bg-[#101010] p-4">
+            <h2 className="mb-3 text-xs font-black text-zinc-500">RITUAL RESOURCES</h2>
+            <div className="grid gap-3 text-sm sm:grid-cols-2">
+              <a
+                href="https://faucet.ritualfoundation.org/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 transition hover:border-emerald-400/50 hover:bg-emerald-500/10"
+              >
+                <span className="font-bold text-emerald-400">Ritual Faucet</span>
+                <p className="mt-1 text-zinc-500">Need test RITUAL for gas? Use the faucet.</p>
+              </a>
+              <a
+                href="https://discord.com/invite/ritual-net"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 transition hover:border-emerald-400/50 hover:bg-emerald-500/10"
+              >
+                <span className="font-bold text-emerald-400">Ritual Discord</span>
+                <p className="mt-1 text-zinc-500">Join Ritual Discord for updates and access codes.</p>
+              </a>
+            </div>
+          </section>
         </main>
 
         <footer className="flex items-center justify-between border-t border-white/10 px-6 py-4 text-xs text-zinc-600">
