@@ -26,13 +26,8 @@ const startSnake = [
   [2, 6],
 ];
 const startFood = [10, 4];
-
-const mockLeaders = [
-  ["0x3f2a...b91c", 5240, "Legendary"],
-  ["0x7e1d...c44a", 3870, "Master"],
-  ["0xab3f...091e", 2520, "Expert"],
-  ["0x19cc...f22b", 1340, "Advanced"],
-] as const;
+const sessionsKey = "ritualSnake.totalSessions";
+const transactionsKey = "ritualSnake.totalOnchainTransactions";
 
 type PlayerStats = {
   totalPoints: bigint;
@@ -121,6 +116,12 @@ function displayUint(value: bigint) {
   return value.toString();
 }
 
+function readStoredCount(key: string) {
+  if (typeof window === "undefined") return 0;
+  const value = window.localStorage.getItem(key);
+  return value ? Number.parseInt(value, 10) || 0 : 0;
+}
+
 function normalizePlayer(data: unknown): PlayerStats {
   if (!data) return { totalPoints: 0n, bestScore: 0n, totalGames: 0n, rank: "Beginner" };
   if (Array.isArray(data)) {
@@ -154,10 +155,18 @@ function normalizeLeaderboard(data: unknown): LeaderboardRow[] {
   if (!Array.isArray(data)) return [];
   return data
     .map((item) => {
-      if (!Array.isArray(item)) return null;
+      if (!Array.isArray(item)) {
+        const row = item as { player?: string; score?: bigint; rank?: string };
+        if (!row?.player) return null;
+        return {
+          player: row.player,
+          score: typeof row.score === "bigint" ? row.score : 0n,
+          rank: row.rank ?? "Beginner",
+        };
+      }
       return {
         player: String(item[0]),
-        score: BigInt(item[1] ?? 0),
+        score: typeof item[1] === "bigint" ? item[1] : 0n,
         rank: String(item[2] ?? "Beginner"),
       };
     })
@@ -213,7 +222,10 @@ export default function App() {
   const [status, setStatus] = useState("Connect wallet, confirm start tx, then play.");
   const [submitError, setSubmitError] = useState("");
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
+  const [lastStartTx, setLastStartTx] = useState<`0x${string}` | null>(null);
   const [lastSubmitTx, setLastSubmitTx] = useState<`0x${string}` | null>(null);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [totalOnchainTransactions, setTotalOnchainTransactions] = useState(0);
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
   const [confirmedPlayer, setConfirmedPlayer] = useState<ReturnType<typeof normalizePlayer> | null>(null);
   const [confirmedPlayerAddress, setConfirmedPlayerAddress] = useState<string | null>(null);
@@ -230,6 +242,14 @@ export default function App() {
   const contractReady = CONTRACT_ADDRESS !== ZERO_ADDRESS;
   const isWrongChain = isConnected && chainId !== ritualChain.id;
 
+  const incrementStoredCount = useCallback((key: string, setter: React.Dispatch<React.SetStateAction<number>>) => {
+    setter((current) => {
+      const next = current + 1;
+      window.localStorage.setItem(key, String(next));
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     scoreRef.current = score;
   }, [score]);
@@ -241,6 +261,15 @@ export default function App() {
   useEffect(() => {
     comboRef.current = combo;
   }, [combo]);
+
+  useEffect(() => {
+    setTotalSessions(readStoredCount(sessionsKey));
+    setTotalOnchainTransactions(readStoredCount(transactionsKey));
+  }, []);
+
+  useEffect(() => {
+    if (!contractReady) setStatus("Score contract not deployed yet.");
+  }, [contractReady]);
 
   useEffect(() => {
     if (!address) {
@@ -257,24 +286,10 @@ export default function App() {
   const best = player.bestScore;
   const totalGames = player.totalGames;
   const leaderboard = confirmedLeaderboard ?? [];
-  const visibleLeaders = leaderboard.length ? leaderboard : mockLeaders.map(([playerAddress, scoreValue, rank]) => ({
-    player: playerAddress,
-    score: BigInt(scoreValue),
-    rank,
+  const leaderboardRows = leaderboard.map((row) => ({
+    ...row,
+    isCurrentUser: Boolean(address && row.player.toLowerCase() === address.toLowerCase()),
   }));
-  const currentUserInLeaderboard = Boolean(
-    address && visibleLeaders.some((row) => row.player.toLowerCase() === address.toLowerCase()),
-  );
-  const leaderboardRows =
-    address && !currentUserInLeaderboard
-      ? [
-          ...visibleLeaders.map((row) => ({ ...row, isCurrentUser: false })),
-          { player: address, score: player.totalPoints, rank: player.rank, isCurrentUser: true },
-        ]
-      : visibleLeaders.map((row) => ({
-          ...row,
-          isCurrentUser: Boolean(address && row.player.toLowerCase() === address.toLowerCase()),
-        }));
 
   const resetGame = () => {
     setScore(0);
@@ -346,7 +361,7 @@ export default function App() {
       return false;
     }
     if (!contractReady) {
-      setStatus("Set NEXT_PUBLIC_RITUAL_SNAKE_SCORES to the deployed contract address.");
+      setStatus("Score contract not deployed yet.");
       return false;
     }
     if (!publicClient) {
@@ -376,6 +391,9 @@ export default function App() {
       const receipt = await publicClient!.waitForTransactionReceipt({ hash });
       if (receipt.status !== "success") throw new Error("startRun() failed on-chain.");
 
+      setLastStartTx(hash);
+      incrementStoredCount(sessionsKey, setTotalSessions);
+      incrementStoredCount(transactionsKey, setTotalOnchainTransactions);
       resetGame();
       setStatus("startRun() confirmed. Get ready.");
       beginCountdown();
@@ -387,22 +405,24 @@ export default function App() {
   };
 
   const refreshContractData = useCallback(async () => {
-    if (!address || !publicClient || !contractReady) return;
+    if (!publicClient || !contractReady) return;
 
-    try {
-      debugContractCall("getPlayer", [address]);
-      const freshPlayer = await publicClient.readContract({
-        address: CONTRACT_ADDRESS,
-        abi: snakeScoresAbi,
-        functionName: "getPlayer",
-        args: [address],
-      });
+    if (address) {
+      try {
+        debugContractCall("getPlayer", [address]);
+        const freshPlayer = await publicClient.readContract({
+          address: CONTRACT_ADDRESS,
+          abi: snakeScoresAbi,
+          functionName: "getPlayer",
+          args: [address],
+        });
 
-      setConfirmedPlayer(normalizePlayer(freshPlayer));
-      setConfirmedPlayerAddress(address);
-    } catch (error) {
-      console.error("[RitualSnake getPlayer failed]", error);
-      setStatus(`Could not refresh player stats: ${errorMessage(error)}`);
+        setConfirmedPlayer(normalizePlayer(freshPlayer));
+        setConfirmedPlayerAddress(address);
+      } catch (error) {
+        console.error("[RitualSnake getPlayer failed]", error);
+        setStatus(`Could not refresh player stats: ${errorMessage(error)}`);
+      }
     }
 
     try {
@@ -420,7 +440,7 @@ export default function App() {
   }, [address, contractReady, publicClient]);
 
   useEffect(() => {
-    if (!address || !contractReady || !publicClient) {
+    if (!contractReady || !publicClient) {
       setConfirmedLeaderboard(null);
       return;
     }
@@ -465,6 +485,7 @@ export default function App() {
 
         await refreshContractData();
         setLastSubmitTx(hash);
+        incrementStoredCount(transactionsKey, setTotalOnchainTransactions);
         setStatus(`submitScore tx: ${hash}`);
         setScoreSubmitted(true);
         playSound("submitSuccess");
@@ -476,7 +497,7 @@ export default function App() {
         submittingRef.current = false;
       }
     },
-    [address, contractReady, isWrongChain, pending, publicClient, refreshContractData, writeContractAsync],
+    [address, contractReady, incrementStoredCount, isWrongChain, pending, publicClient, refreshContractData, writeContractAsync],
   );
 
   useEffect(() => {
@@ -574,8 +595,8 @@ export default function App() {
       >
         <header className="relative flex flex-col gap-4 border-b border-white/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 font-bold">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-black text-emerald-400 shadow-[0_0_24px_rgba(16,185,129,.45)]">
-              ◈
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-black p-1.5 shadow-[0_0_24px_rgba(16,185,129,.45)] sm:h-12 sm:w-12">
+              <img src="/ritual-logo.png" alt="Ritual" className="h-full w-full object-contain" />
             </span>
             Ritual Snake
           </div>
@@ -679,18 +700,36 @@ export default function App() {
 
                 <Button
                   onClick={startRun}
-                  disabled={playing || countdown !== null || pending !== null || isWalletPending || isConnecting}
+                  disabled={!contractReady || playing || countdown !== null || pending !== null || isWalletPending || isConnecting}
                   className="mt-3 w-full rounded-xl border border-white/20 bg-transparent px-4 py-2 hover:bg-white hover:text-black disabled:opacity-50"
                 >
-                  {pending === "startRun()" ? "Confirming..." : playing ? "Playing..." : countdown !== null ? "Starting..." : "Play Now"}
+                  {pending === "startRun()" ? "Confirming..." : playing ? "Playing..." : countdown !== null ? "Starting..." : "Start Game TX"}
                 </Button>
 
                 <p className="mt-3 min-h-10 text-center text-sm leading-5 text-zinc-500">{status}</p>
                 {!contractReady && (
                   <p className="mt-1 text-center font-mono text-xs text-amber-300">
-                    Set NEXT_PUBLIC_RITUAL_SNAKE_SCORES=0x... after deployment.
+                    Score contract not deployed yet.
                   </p>
                 )}
+                <div className="mt-3 space-y-1 text-xs text-zinc-500">
+                  <p className="flex justify-between gap-3">
+                    <span>Total sessions</span>
+                    <b className="text-emerald-400">{totalSessions}</b>
+                  </p>
+                  <p className="flex justify-between gap-3">
+                    <span>Total onchain transactions</span>
+                    <b className="text-emerald-400">{totalOnchainTransactions}</b>
+                  </p>
+                  <p className="break-all font-mono">
+                    <span className="text-zinc-600">Last start tx: </span>
+                    {lastStartTx ?? "--"}
+                  </p>
+                  <p className="break-all font-mono">
+                    <span className="text-zinc-600">Last score submit tx: </span>
+                    {lastSubmitTx ?? "--"}
+                  </p>
+                </div>
                 {pending === "submitScore(score)" && <p className="mt-1 text-center text-xs font-bold text-emerald-300">Submitting final score...</p>}
                 {submitError && (
                   <div className="mt-3 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-center text-sm text-red-200">
@@ -701,7 +740,7 @@ export default function App() {
                         disabled={pending !== null}
                         className="mt-2 rounded-lg border border-red-300/40 px-3 py-1 text-xs hover:bg-red-300 hover:text-black disabled:opacity-50"
                       >
-                        Retry Submit
+                        Retry Submit TX
                       </Button>
                     )}
                   </div>
@@ -740,26 +779,30 @@ export default function App() {
                 <span className="text-center">Rank</span>
               </div>
 
-              {leaderboardRows.map((row, i) => (
-                <div
-                  key={`${row.player}-${i}`}
-                  className={`grid grid-cols-[40px_1fr_90px_120px] gap-2 border-b border-white/10 px-4 py-3 text-sm last:border-b-0 ${
-                    row.isCurrentUser ? "bg-emerald-500/[0.06]" : ""
-                  }`}
-                >
-                  <span className="text-amber-400">{i + 1}</span>
-                  <span className="flex items-center gap-2 font-mono text-zinc-500">
-                    {shortenHex(row.player)}
-                    {row.isCurrentUser && (
-                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-sans text-[10px] font-bold text-emerald-400">
-                        You
-                      </span>
-                    )}
-                  </span>
-                  <b className="text-right">{displayUint(row.score)}</b>
-                  <span className="rounded-full bg-emerald-500/10 px-2 text-center text-xs text-emerald-400">{row.rank}</span>
-                </div>
-              ))}
+              {leaderboardRows.length === 0 ? (
+                <div className="px-4 py-5 text-center text-sm text-zinc-500">No scores yet. Be the first player.</div>
+              ) : (
+                leaderboardRows.map((row, i) => (
+                  <div
+                    key={`${row.player}-${i}`}
+                    className={`grid grid-cols-[40px_1fr_90px_120px] gap-2 border-b border-white/10 px-4 py-3 text-sm last:border-b-0 ${
+                      row.isCurrentUser ? "bg-emerald-500/[0.06]" : ""
+                    }`}
+                  >
+                    <span className="text-amber-400">{i + 1}</span>
+                    <span className="flex items-center gap-2 font-mono text-zinc-500">
+                      {shortenHex(row.player)}
+                      {row.isCurrentUser && (
+                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-sans text-[10px] font-bold text-emerald-400">
+                          You
+                        </span>
+                      )}
+                    </span>
+                    <b className="text-right">{displayUint(row.score)}</b>
+                    <span className="rounded-full bg-emerald-500/10 px-2 text-center text-xs text-emerald-400">{row.rank}</span>
+                  </div>
+                ))
+              )}
             </div>
           </section>
         </main>
@@ -797,7 +840,7 @@ export default function App() {
                   disabled={pending !== null}
                   className="mt-4 w-full rounded-xl bg-white px-4 py-2 text-black hover:bg-zinc-200 disabled:opacity-50"
                 >
-                  {pending === "submitScore(score)" ? "Confirming..." : "Submit Score"}
+                  {pending === "submitScore(score)" ? "Confirming..." : "Submit Score TX"}
                 </Button>
               </div>
             ) : (
@@ -805,7 +848,7 @@ export default function App() {
                 {lastSubmitTx && <p className="mb-3 break-all font-mono text-xs text-emerald-300">Tx: {lastSubmitTx}</p>}
                 <div className="grid grid-cols-2 gap-3">
                   <Button onClick={startRun} className="rounded-xl bg-white px-4 py-2 text-black hover:bg-zinc-200">
-                    Play Again
+                    Start Game TX
                   </Button>
                   <Button
                     onClick={() =>
