@@ -28,6 +28,7 @@ const startSnake = [
 const startFood = [10, 4];
 const sessionsKey = "ritualSnake.totalSessions";
 const transactionsKey = "ritualSnake.totalOnchainTransactions";
+const soundKey = "ritualSnake.soundEnabled";
 
 type PlayerStats = {
   totalPoints: bigint;
@@ -54,8 +55,12 @@ function getRank(score: number) {
 
 let audioContext: AudioContext | null = null;
 
-function playSound(type: "countdown" | "go" | "eat" | "gameOver" | "submitSuccess") {
+function playSound(
+  type: "countdown" | "go" | "eat" | "gameOver" | "submitSuccess" | "transactionConfirmed" | "gameStart",
+  enabled: boolean,
+) {
   try {
+    if (!enabled) return;
     if (typeof window === "undefined") return;
     const audioWindow = window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
     const AudioContextClass = audioWindow.AudioContext || audioWindow.webkitAudioContext;
@@ -68,6 +73,15 @@ function playSound(type: "countdown" | "go" | "eat" | "gameOver" | "submitSucces
 
     const tones = {
       countdown: [{ frequency: 520, start: 0, duration: 0.08, gain: 0.045 }],
+      transactionConfirmed: [
+        { frequency: 620, start: 0, duration: 0.07, gain: 0.035 },
+        { frequency: 830, start: 0.08, duration: 0.09, gain: 0.035 },
+      ],
+      gameStart: [
+        { frequency: 520, start: 0, duration: 0.06, gain: 0.035 },
+        { frequency: 700, start: 0.06, duration: 0.06, gain: 0.035 },
+        { frequency: 940, start: 0.12, duration: 0.08, gain: 0.032 },
+      ],
       go: [
         { frequency: 660, start: 0, duration: 0.07, gain: 0.05 },
         { frequency: 880, start: 0.08, duration: 0.1, gain: 0.05 },
@@ -120,6 +134,11 @@ function readStoredCount(key: string) {
   if (typeof window === "undefined") return 0;
   const value = window.localStorage.getItem(key);
   return value ? Number.parseInt(value, 10) || 0 : 0;
+}
+
+function readStoredSoundPreference() {
+  if (typeof window === "undefined") return true;
+  return window.localStorage.getItem(soundKey) !== "off";
 }
 
 function wait(ms: number) {
@@ -245,6 +264,7 @@ export default function App() {
   const [lastSubmitTx, setLastSubmitTx] = useState<`0x${string}` | null>(null);
   const [totalSessions, setTotalSessions] = useState(0);
   const [totalOnchainTransactions, setTotalOnchainTransactions] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
   const [confirmedPlayer, setConfirmedPlayer] = useState<ReturnType<typeof normalizePlayer> | null>(null);
   const [confirmedPlayerAddress, setConfirmedPlayerAddress] = useState<string | null>(null);
@@ -284,7 +304,17 @@ export default function App() {
   useEffect(() => {
     setTotalSessions(readStoredCount(sessionsKey));
     setTotalOnchainTransactions(readStoredCount(transactionsKey));
+    setSoundEnabled(readStoredSoundPreference());
   }, []);
+
+  const toggleSound = () => {
+    setSoundEnabled((enabled) => {
+      const next = !enabled;
+      window.localStorage.setItem(soundKey, next ? "on" : "off");
+      if (next) playSound("transactionConfirmed", true);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!contractReady) setStatus("Score contract not deployed yet.");
@@ -352,7 +382,7 @@ export default function App() {
 
   const beginCountdown = () => {
     setCountdown(3);
-    playSound("countdown");
+    playSound("countdown", soundEnabled);
     let v = 3;
     const timer = window.setInterval(() => {
       v -= 1;
@@ -360,9 +390,10 @@ export default function App() {
         window.clearInterval(timer);
         setCountdown(null);
         setPlaying(true);
+        playSound("gameStart", soundEnabled);
         setStatus("Run is live. Use arrows or the on-screen controls.");
       } else {
-        playSound(v === 1 ? "go" : "countdown");
+        playSound(v === 1 ? "go" : "countdown", soundEnabled);
         setCountdown(v);
       }
     }, 650);
@@ -414,6 +445,7 @@ export default function App() {
       incrementStoredCount(sessionsKey, setTotalSessions);
       incrementStoredCount(transactionsKey, setTotalOnchainTransactions);
       setStatus("Transaction confirmed. Starting game...");
+      playSound("transactionConfirmed", soundEnabled);
       await wait(2000);
       resetGame();
       setStatus("Transaction confirmed. Starting game...");
@@ -509,7 +541,7 @@ export default function App() {
         incrementStoredCount(transactionsKey, setTotalOnchainTransactions);
         setStatus(`submitScore tx: ${hash}`);
         setScoreSubmitted(true);
-        playSound("submitSuccess");
+        playSound("submitSuccess", soundEnabled);
       } catch (error) {
         setSubmitError(errorMessage(error));
         setStatus(`Score not submitted: ${errorMessage(error)}`);
@@ -518,7 +550,7 @@ export default function App() {
         submittingRef.current = false;
       }
     },
-    [address, contractReady, incrementStoredCount, isWrongChain, pending, publicClient, refreshContractData, writeContractAsync],
+    [address, contractReady, incrementStoredCount, isWrongChain, pending, publicClient, refreshContractData, soundEnabled, writeContractAsync],
   );
 
   useEffect(() => {
@@ -573,7 +605,7 @@ export default function App() {
           setScoreSubmitted(false);
           setLastSubmitTx(null);
           setGameOver(true);
-          playSound("gameOver");
+          playSound("gameOver", soundEnabled);
           return old;
         }
 
@@ -590,7 +622,7 @@ export default function App() {
           setCombo(nextCombo);
           setScore(nextScore);
           setFood(nextFood);
-          playSound("eat");
+          playSound("eat", soundEnabled);
           return fresh;
         }
 
@@ -599,7 +631,7 @@ export default function App() {
     }, Math.max(70, 145 - Math.floor(scoreRef.current / 100) * 10));
 
     return () => window.clearInterval(timer);
-  }, [countdown, playing, submitScore]);
+  }, [countdown, playing, soundEnabled, submitScore]);
 
   const arrow = (next: number[]) => {
     const cur = dirRef.current;
@@ -645,6 +677,12 @@ export default function App() {
 
           <div className="relative flex items-center gap-3">
             {isConnected && <span className="hidden text-xs text-emerald-400 sm:block">{formatBalance(nativeBalance?.value)} RITUAL</span>}
+            <Button
+              onClick={toggleSound}
+              className="rounded-xl border border-emerald-500/30 px-3 py-2 text-xs text-emerald-400 hover:border-emerald-400 hover:bg-emerald-500/10"
+            >
+              {soundEnabled ? "Sound On" : "Sound Off"}
+            </Button>
             <Button
               onClick={() => (isConnected ? setWalletMenuOpen((open) => !open) : connectWallet())}
               disabled={isConnecting}
