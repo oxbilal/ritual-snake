@@ -13,9 +13,9 @@ import {
   useSwitchChain,
   useWriteContract,
 } from "wagmi";
-import { ritualChain } from "@/lib/chain";
-import { errorMessage, shortenHex } from "@/lib/format";
-import { CONTRACT_ADDRESS, snakeScoresAbi, ZERO_ADDRESS, type LeaderboardRow } from "@/lib/snakeScores";
+import { ritualChain } from "../lib/chain";
+import { errorMessage, shortenHex } from "../lib/format";
+import { CONTRACT_ADDRESS, snakeScoresAbi, ZERO_ADDRESS, type LeaderboardRow } from "../lib/snakeScores";
 
 const size = 14;
 const cell = 14;
