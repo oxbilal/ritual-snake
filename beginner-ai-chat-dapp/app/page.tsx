@@ -122,6 +122,12 @@ function readStoredCount(key: string) {
   return value ? Number.parseInt(value, 10) || 0 : 0;
 }
 
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 function shareScoreOnX(score: number, rank: string, wallet?: string) {
   const origin = window.location.origin;
   const shareUrl = new URL("/share", origin);
@@ -407,8 +413,10 @@ export default function App() {
       setLastStartTx(hash);
       incrementStoredCount(sessionsKey, setTotalSessions);
       incrementStoredCount(transactionsKey, setTotalOnchainTransactions);
+      setStatus("Transaction confirmed. Starting game...");
+      await wait(2000);
       resetGame();
-      setStatus("startRun() confirmed. Get ready.");
+      setStatus("Transaction confirmed. Starting game...");
       beginCountdown();
     } catch (error) {
       setStatus(`startRun() not completed: ${errorMessage(error)}`);
